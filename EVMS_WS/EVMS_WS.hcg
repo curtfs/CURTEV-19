@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SETTINGS>
+  <DEVICE>
+    <family>RM42x</family>
+    <device>RM42L432PZ</device>
+    <dilfile>EVMS_WS.dil</dilfile>
+    <tools>ti</tools>
+  </DEVICE>
+  <VERSION>
+    <version>04.07.01</version>
+  </VERSION>
+  <HET>
+    <FILENAME>
+      <HET1ASMHDR>
+        <NAME/>
+      </HET1ASMHDR>
+      <HET1ASMSRC>
+        <NAME/>
+      </HET1ASMSRC>
+    </FILENAME>
+  </HET>
+</SETTINGS>
