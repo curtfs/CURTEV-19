@@ -3,7 +3,7 @@
   <DEVICE>
     <family>RM42x</family>
     <device>RM42L432PZ</device>
-    <dilfile>EVMS_WS.dil</dilfile>
+    <dilfile>Inverter_ECU.dil</dilfile>
     <tools>ti</tools>
   </DEVICE>
   <VERSION>
@@ -195,7 +195,9 @@
       <HDRRTI>
         <NAME>rti.h</NAME>
       </HDRRTI>
-      <SRCRTI/>
+      <SRCRTI>
+        <NAME>rti.c</NAME>
+      </SRCRTI>
       <HDRGIO_R>
         <NAME>reg_gio.h</NAME>
       </HDRGIO_R>
@@ -227,18 +229,14 @@
       <HDRMIBSPI>
         <NAME>mibspi.h</NAME>
       </HDRMIBSPI>
-      <SRCMIBSPI>
-        <NAME>mibspi.c</NAME>
-      </SRCMIBSPI>
+      <SRCMIBSPI/>
       <HDRSPI_R>
         <NAME>reg_spi.h</NAME>
       </HDRSPI_R>
       <HDRSPI>
         <NAME>spi.h</NAME>
       </HDRSPI>
-      <SRCSPI>
-        <NAME>spi.c</NAME>
-      </SRCSPI>
+      <SRCSPI/>
       <HDRCAN_R>
         <NAME>reg_can.h</NAME>
       </HDRCAN_R>
@@ -254,7 +252,9 @@
       <HDRADC>
         <NAME>adc.h</NAME>
       </HDRADC>
-      <SRCADC/>
+      <SRCADC>
+        <NAME>adc.c</NAME>
+      </SRCADC>
       <HET1ASMHDR>
         <NAME/>
       </HET1ASMHDR>
@@ -371,7 +371,7 @@
         <PATH>include\rti.h</PATH>
       </HDRRTI>
       <SRCRTI>
-        <PATH/>
+        <PATH>source\rti.c</PATH>
       </SRCRTI>
     </FILENAMES>
   </RTI>
@@ -423,7 +423,7 @@
         <PATH>include\mibspi.h</PATH>
       </HDRMIBSPI>
       <SRCMIBSPI>
-        <PATH>source\mibspi.c</PATH>
+        <PATH/>
       </SRCMIBSPI>
     </FILENAMES>
   </MIBSPI>
@@ -436,7 +436,7 @@
         <PATH>include\spi.h</PATH>
       </HDRSPI>
       <SRCSPI>
-        <PATH>source\spi.c</PATH>
+        <PATH/>
       </SRCSPI>
     </FILENAMES>
   </SPI>
@@ -462,7 +462,7 @@
         <PATH>include\adc.h</PATH>
       </HDRADC>
       <SRCADC>
-        <PATH/>
+        <PATH>source\adc.c</PATH>
       </SRCADC>
     </FILENAMES>
   </ADC>
