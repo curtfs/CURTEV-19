@@ -1,3 +1,47 @@
+/** @file sys_main.c 
+*   @brief Application main file
+*   @date 11-Dec-2018
+*   @version 04.07.01
+*
+*   This file contains an empty main function,
+*   which can be used for the application.
+*/
+
+/* 
+* Copyright (C) 2009-2018 Texas Instruments Incorporated - www.ti.com 
+* 
+* 
+*  Redistribution and use in source and binary forms, with or without 
+*  modification, are permitted provided that the following conditions 
+*  are met:
+*
+*    Redistributions of source code must retain the above copyright 
+*    notice, this list of conditions and the following disclaimer.
+*
+*    Redistributions in binary form must reproduce the above copyright
+*    notice, this list of conditions and the following disclaimer in the 
+*    documentation and/or other materials provided with the   
+*    distribution.
+*
+*    Neither the name of Texas Instruments Incorporated nor the names of
+*    its contributors may be used to endorse or promote products derived
+*    from this software without specific prior written permission.
+*
+*  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
+*  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
+*  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+*  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT 
+*  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
+*  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT 
+*  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+*  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+*  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
+*  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
+*  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*
+*/
+
+
 /* USER CODE BEGIN (0) */
 
 #include "can.h"
@@ -7,6 +51,7 @@
 #include "BPPS.h"
 #include "rti.h"
 #include "BUFFERDATA.h"
+#include "gio.h"
 /* USER CODE END */
 
 /* Include Files */
@@ -15,6 +60,7 @@
 
 /* USER CODE BEGIN (1) */
 uint8 tx_data[2];
+uint8 tx_data111[8] = {'S','T','A','R','T'};
 unsigned char TorqueShow[8];
 uint16 Request1;
 uint16 Request2;
@@ -42,6 +88,7 @@ uint16 Idle = 0;
 uint16 TorqueSR =  1;
 uint16 NO_TORQUE  = 2;
 uint8 z=0;
+uint8 i;
 //#define SendErr 3
 /* USER CODE END */
 
@@ -60,9 +107,10 @@ void Show_Brake(void);
 void sendTorque(void);
 void SendInverterData(void);
 void SendInverterErr(void);
+void ENABLE_BAMOCAR(void);
+void DISABLE_BAMOCAR(void);
 /* USER CODE END */
-
-void main(void)
+int main(void)
 {
 /* USER CODE BEGIN (3) */
     Request1=0;
@@ -73,22 +121,19 @@ void main(void)
     startflag=0;
     currentState=Idle;
     nextState=Idle;
-    INVERTER_DATA_BUFFER.OUTPUT_VOLTAGE =0;
-    INVERTER_DATA_BUFFER.ACTUAL_CURRENT =1;
-    INVERTER_DATA_BUFFER.DC_VOLTAGE =400;
-    INVERTER_DATA_BUFFER.DC_POWER =3;
-    INVERTER_DATA_BUFFER.RESOLVER_SIGNAL =4;
-    INVERTER_DATA_BUFFER.MOTOR_TEMPERATURE =5;
-    INVERTER_DATA_BUFFER.IGBT_TEMPERATURE = 6;
+
 
     /* initialization  */
     sciInit();
     adcInit();
     canInit();
     rtiInit();
+    gioInit();
     rtiEnableNotification(rtiNOTIFICATION_COMPARE0);
     _enable_IRQ();
-    while(1)
+    gioSetBit(gioPORTA,0,1);   // RFE disable
+    gioSetBit(gioPORTA,1,1);
+       while(1)
     {
 
         sciSend(scilinREG, 6, (unsigned char *)"State:");
@@ -101,9 +146,11 @@ void main(void)
         {
              // initialize bamocar
              // torque request = 0
-              if( canIsRxMessageArrived(canREG1,canMESSAGE_BOX1))
+              if(canIsRxMessageArrived(canREG1,canMESSAGE_BOX1))
               {
+                 gioSetBit(gioPORTA,2,1);
                  canGetData(canREG1, canMESSAGE_BOX1, read1);
+                 canTransmit(canREG1, canMESSAGE_BOX8, tx_data111);
                  nextState = NO_TORQUE;
               }
               else
@@ -115,17 +162,18 @@ void main(void)
 
         else if(currentState==TorqueSR)
         {
-             sendTorque();
+           //  sendTorque();
              nextState=TorqueSR;
              if(canIsRxMessageArrived(canREG1,canMESSAGE_BOX2))
              {
                  canGetData(canREG1, canMESSAGE_BOX2, read2);
-             SendInverterData();
+                 SendInverterData();
              }
-             if( canIsRxMessageArrived(canREG1,canMESSAGE_BOX6))
+             if(canIsRxMessageArrived(canREG1,canMESSAGE_BOX6))
              {
                  canGetData(canREG1, canMESSAGE_BOX6, read3);
-                  nextState=NO_TORQUE;
+                 DISABLE_BAMOCAR();
+                 nextState=NO_TORQUE;
              }
              currentState = nextState;
         }
@@ -135,17 +183,16 @@ void main(void)
             nextState=NO_TORQUE;
             if(canIsRxMessageArrived(canREG1,canMESSAGE_BOX2))
             {
-
-              canGetData(canREG1, canMESSAGE_BOX2, read2);
-              SendInverterData();
+                canGetData(canREG1, canMESSAGE_BOX2, read2);
+                SendInverterData();
             }
             if(canIsRxMessageArrived(canREG1,canMESSAGE_BOX3))
              {
                canGetData(canREG1, canMESSAGE_BOX3, read4);
                errflag=0;
+               ENABLE_BAMOCAR();
                nextState=TorqueSR;
              }
-
              currentState = nextState;
         }
 
@@ -153,11 +200,23 @@ void main(void)
 
 /* USER CODE END */
 
+
 }
 
 
 /* USER CODE BEGIN (4) */
-
+void ENABLE_BAMOCAR(void)
+{
+    int i;
+    gioSetBit(gioPORTA,0,0);   // RFE enable
+    for(i=0;i<14000000;i++);
+    gioSetBit(gioPORTA,1,0);   // Drive enable
+}
+void DISABLE_BAMOCAR(void)
+{
+    gioSetBit(gioPORTA,1,1);   // Drive disable
+    gioSetBit(gioPORTA,0,1);   // RFE disable
+}
 void Show_torque(void)
 {
     uint16 NumberOfCharsOfTorque;
@@ -236,83 +295,18 @@ uint32_t checkpackets(uint8_t *src_packet,uint8_t *dst_packet,uint32_t psize)
 }
 void SendInverterData(void)
 {
+    INVERTER_DATA_BUFFER.MOTOR_TEMPERATURE = 2;
+    INVERTER_DATA_BUFFER.IGBT_TEMPERATURE = 1;
+    INVERTER_DATA_BUFFER.INVERTER_ERROR_WARNING = 0;
 
-     ltoa((unsigned int)INVERTER_DATA_BUFFER.DC_VOLTAGE, (char *)INV_DATA_BUFFER);
-       for(i=0;i<4;i++)
-        {
-           INVERTER_DATA_1[i] = INV_DATA_BUFFER[i];
-        }
+    INV_DATA_BUFFER[0] = INVERTER_DATA_BUFFER.MOTOR_TEMPERATURE;
+    INV_DATA_BUFFER[1] =INVERTER_DATA_BUFFER.IGBT_TEMPERATURE;
+    INV_DATA_BUFFER[2] = INVERTER_DATA_BUFFER.INVERTER_ERROR_WARNING;
+    canTransmit(canREG1, canMESSAGE_BOX5, INV_DATA_BUFFER);
 
-     ltoa((unsigned int)INVERTER_DATA_BUFFER.DC_POWER, (char *)INV_DATA_BUFFER);
-       for(;i<8;i++)
-        {
-           INVERTER_DATA_1[i] = INV_DATA_BUFFER[i-4];
-        }
 
-        canTransmit(canREG1, canMESSAGE_BOX5, INVERTER_DATA_1);
-        /*
-      ltoa((unsigned int)INVERTER_DATA_BUFFER.RESOLVER_SIGNAL, (char *)INV_DATA_BUFFER);
-        for(i=0;i<4;i++)
-        {
-            INVERTER_DATA_2[i] = INV_DATA_BUFFER[i];
-        }
-      ltoa((unsigned int)INVERTER_DATA_BUFFER.MOTOR_TEMPERATURE, (char *)INV_DATA_BUFFER);
-        for(;i<8;i++)
-        {
-            INVERTER_DATA_2[i] = INV_DATA_BUFFER[i-4];
-        }
-        canTransmit(canREG1, canMESSAGE_BOX5, INVERTER_DATA_2);
 
-      ltoa((unsigned int)INVERTER_DATA_BUFFER.IGBT_TEMPERATURE, (char *)INV_DATA_BUFFER);
-        for(i=0;i<4;i++)
-        {
-            INVERTER_DATA_3[i] = INV_DATA_BUFFER[i];
-        }
-      ltoa((unsigned int)INVERTER_DATA_BUFFER.INVERTER_ERROR_WARNING, (char *)INV_DATA_BUFFER);
-        for(;i<8;i++)
-        {
-             INVERTER_DATA_3[i] = INV_DATA_BUFFER[i-4];
-        }
-        canTransmit(canREG1, canMESSAGE_BOX5, INVERTER_DATA_3);
-*/
-    /*
-    ltoa((unsigned int)INVERTER_DATA_BUFFER.OUTPUT_VOLTAGE, (char *)INV_DATA_BUFFER);
-    for(i=0;i<4;i++)
-    {
-        INVERTER_DATA[i] = INV_DATA_BUFFER[i];
-    }
-    ltoa((unsigned int)INVERTER_DATA_BUFFER.ACTUAL_CURRENT, (char *)INV_DATA_BUFFER);
-    for(;i<8;i++)
-    {
-         INVERTER_DATA[i] = INV_DATA_BUFFER[i-4];
-    }
-    ltoa((unsigned int)INVERTER_DATA_BUFFER.DC_VOLTAGE, (char *)INV_DATA_BUFFER);
-    for(;i<12;i++)
-    {
-         INVERTER_DATA[i] = INV_DATA_BUFFER[i-8];
-    }
-    ltoa((unsigned int)INVERTER_DATA_BUFFER.DC_POWER, (char *)INV_DATA_BUFFER);
-    for(;i<16;i++)
-    {
-         INVERTER_DATA[i] = INV_DATA_BUFFER[i-12];
-    }
-    ltoa((unsigned int)INVERTER_DATA_BUFFER.RESOLVER_SIGNAL, (char *)INV_DATA_BUFFER);
-    for(;i<20;i++)
-    {
-         INVERTER_DATA[i] = INV_DATA_BUFFER[i-16];
-    }
-    ltoa((unsigned int)INVERTER_DATA_BUFFER.MOTOR_TEMPERATURE, (char *)INV_DATA_BUFFER);
-    for(;i<24;i++)
-    {
-          INVERTER_DATA[i] = INV_DATA_BUFFER[i-20];
-    }
-    ltoa((unsigned int)INVERTER_DATA_BUFFER.IGBT_TEMPERATURE, (char *)INV_DATA_BUFFER);
-    for(;i<28;i++)
-    {
-          INVERTER_DATA[i] = INV_DATA_BUFFER[i-24];
-    }
-    canTransmit(canREG1, canMESSAGE_BOX5, INVERTER_DATA);
-*/
+
 }
 void canMessageNotification(canBASE_t *node, uint32 messageBox)
 {
